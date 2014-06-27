@@ -10,8 +10,14 @@ public class LoggingClassLoader extends ClassLoader {
 	private ClassLoadingListener listener;
 	
 	public LoggingClassLoader(ClassLoader parentClassLoader) {
+		this(parentClassLoader, PathResolverFactory.create(), DepleterFactory.create(), ClassLoadingListener.create());
+	}
+	
+	public LoggingClassLoader(ClassLoader parentClassLoader, PathResolver pathResolver, Depleter depleter, ClassLoadingListener listener) {
 		super(parentClassLoader);
-		setListener(ClassLoadingListener.create());
+		this.depleter = depleter;
+		this.pathResolver = pathResolver;
+		this.listener = listener;
 	}
 	
 	@Override
@@ -19,47 +25,15 @@ public class LoggingClassLoader extends ClassLoader {
 		String classPath = name.replace('.', '/')+".class";
 		URL url = getResource(classPath);
 		try {
-			String path = getPathResolver().getPath(url, classPath);
-			getListener().loading(name, path);
+			String path = this.pathResolver.getPath(url, classPath);
+			this.listener.loading(name, path);
 			URLConnection connection = url.openConnection();
 			InputStream input = connection.getInputStream();
-			byte[] bytes = getDepleter().deplete(input);
+			byte[] bytes = this.depleter.deplete(input);
             return defineClass(name, bytes, 0, bytes.length);
 		} catch (Exception e) {
 			return this.getParent().loadClass(name);
 		}
 	}
 	
-	public PathResolver getPathResolver() {
-		if(this.pathResolver == null) {
-			this.pathResolver = PathResolverFactory.create();
-		}
-		return this.pathResolver;
-	}
-	
-	public void setPathResolver(PathResolver pathResolver) {
-		this.pathResolver = pathResolver;
-	}
-	
-	public Depleter getDepleter() {
-		if(this.depleter == null) {
-			this.depleter = DepleterFactory.create();
-		}
-		return this.depleter;
-	}
-	
-	public void setDepleter(Depleter depleter) {
-		this.depleter = depleter;
-	}
-	
-	public ClassLoadingListener getListener() {
-		if(this.listener == null) {
-			this.listener = ClassLoadingListener.create();
-		}
-		return listener;
-	}
-	
-	public void setListener(ClassLoadingListener listener) {
-		this.listener = listener;
-	}
 }

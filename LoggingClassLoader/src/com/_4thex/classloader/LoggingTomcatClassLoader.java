@@ -1,18 +1,26 @@
 package com._4thex.classloader;
 
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.catalina.loader.WebappClassLoader;
 
 public class LoggingTomcatClassLoader extends WebappClassLoader {
 
 	private PathResolver pathResolver;
-	private Depleter depleter;
 	private ClassLoadingListener listener;
-
+	private Map<String, String> classMap;
+	
 	public LoggingTomcatClassLoader(ClassLoader parentClassLoader) {
+		this(parentClassLoader, PathResolverFactory.create(), ClassLoadingListener.create());
+	}
+	
+	public LoggingTomcatClassLoader(ClassLoader parentClassLoader, PathResolver pathResolver, ClassLoadingListener listener) {
 		super(parentClassLoader);
-		setListener(ClassLoadingListener.create());
+		this.classMap = new HashMap<String, String>();
+		this.pathResolver = pathResolver;
+		this.listener = listener;
 	}
 	
 	@Override
@@ -20,41 +28,13 @@ public class LoggingTomcatClassLoader extends WebappClassLoader {
 		if(super.findLoadedClass(name) == null) {
 			String classPath = name.replace('.', '/')+".class";
 			URL url = getResource(classPath);
-			String path = getPathResolver().getPath(url, classPath);
-			getListener().loading(name, path);
+			String path = this.pathResolver.getPath(url, classPath);
+			if(!this.classMap.containsKey(name)) {
+				this.listener.loading(name, path);
+				this.classMap.put(name, path);
+			}
 		}
 		Class<?> loadedClass = super.loadClass(name);
 		return loadedClass;
 	}
-	
-	public PathResolver getPathResolver() {
-		if(this.pathResolver == null) {
-			this.pathResolver = PathResolverFactory.create();
-		}
-		return this.pathResolver;
-	}
-	
-	public void setPathResolver(PathResolver pathResolver) {
-		this.pathResolver = pathResolver;
-	}
-	
-	public Depleter getDepleter() {
-		if(this.depleter == null) {
-			this.depleter = DepleterFactory.create();
-		}
-		return this.depleter;
-	}
-	
-	public void setDepleter(Depleter depleter) {
-		this.depleter = depleter;
-	}
-	
-	public ClassLoadingListener getListener() {
-		return listener;
-	}
-	
-	public void setListener(ClassLoadingListener listener) {
-		this.listener = listener;
-	}
-
 }
